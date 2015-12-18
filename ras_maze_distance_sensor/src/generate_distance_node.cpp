@@ -176,7 +176,7 @@ public:
             intersected= getMarkerForDistanceSensor(marker_forward_left, min_distance, "/distance_sensor_forward_left_link");
             if (intersected) {
                 double sensor_value = distance_sensor_->sample(min_distance);
-                adc_msg.ch5 = (unsigned int)(sensor_value*(1023/5.0));
+                adc_msg.ch6 = (unsigned int)(sensor_value*(1023/5.0));
                 marker_array.markers.push_back(marker_forward_left);
             }
 
