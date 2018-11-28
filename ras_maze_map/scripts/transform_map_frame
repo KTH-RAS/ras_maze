@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+import argparse
+import numpy as np
+import sys
+import os
+
+
+def read_map(file_name):
+    """
+        Read a wall map from the given file.
+        ---------
+        Arguments
+        ---------
+        file_name, string - path to the file
+        -------
+        Returns
+        -------
+        walls, np.array of shape (n, 2, 2), where n is the number of walls in the file
+            For each wall i walls[i] is a matrix [[x_1, x_2], [[y_1, y_2]]] describing the start
+            and end point of the wall.
+    """
+    with open(file_name, 'r') as ifile:
+        def create_matrix(line):
+            values = line.split(' ')
+            # values is supposed to be a list of 4 strings representing x1, y1, x2, y2
+            if len(values) != 4:
+                raise IOError("Map file invalid. Can not parse values %s to walls" % str(values))
+            return [[float(values[0]), float(values[2])], [float(values[1]), float(values[3])]]
+        return np.array([create_matrix(line) for line in ifile.readlines()])
+
+
+def write_map(file_name, walls):
+    """
+        Save the given walls to the given file.
+        ---------
+        Arguments
+        ---------
+        file_name, string - filename for the map
+        walls, np.array - walls as returned by read_map
+    """
+    if not os.path.exists(os.path.dirname(file_name)):
+        os.makedirs(os.path.dirname(file_name))
+    with open(file_name, 'w') as ofile:
+        for wall in walls:
+            ofile.write('%f %f %f %f\n' % tuple(wall.transpose().flat))
+
+
+def transform_walls(walls, t=None, r=None, m=False):
+    """
+        Transform the given walls.
+        ---------
+        Arguments
+        ---------
+        walls, np.array of shape (n, 2, 2) as returned by read_map
+        t (optional), np.array of shape (2,) - position to translate by
+        r (optional), float - angle (radians) to rotate by 
+        m (optional), bool - whether to mirror the map
+    """
+    if t is None:
+        t = np.zeros(2)
+    if r is None:
+        r = 0.0
+    s = np.sin(r)
+    c = np.cos(r)
+    tf = np.array(((c, -s), (s, c))).reshape((2, 2))
+    new_walls = (np.matmul(tf, walls).transpose((0, 2, 1)) + t).transpose((0, 2, 1))
+    if m:  # mirror means we want to swap x and y
+        new_walls[:, [0, 1], :] = new_walls[:, [1, 0], :]
+    return new_walls
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Transform a maze lab to a new coordinate frame.")
+    parser.add_argument('input_file', help="Path to the maze to transform", type=str)
+    parser.add_argument('output_file', help="Output filename", type=str)
+    parser.add_argument('-t', type=float, nargs=2, required=False, metavar=("x", "y"),
+                        help='Translate by the given x, y offsets')
+    parser.add_argument('-r', type=float, nargs=1, required=False,
+                        help='Rotate by the given angle')
+    parser.add_argument('-m', help="If set, mirror the map", action="store_true", default=False)
+    args = parser.parse_args()
+    walls = read_map(args.input_file)
+    new_walls = transform_walls(walls, t=args.t, r=args.r, m=args.m)
+    write_map(args.output_file, new_walls)
+    sys.exit(0)
